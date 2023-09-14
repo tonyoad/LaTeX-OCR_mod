@@ -1,0 +1,90 @@
+# model
+backbone_layers:
+- 2
+- 3
+- 7
+decoder_args:
+  attn_on_attn: true
+  cross_attend: true
+  ff_glu: true
+  rel_pos_bias: false
+  use_scalenorm: false
+dim: 256
+heads: 8
+encoder_structure: hybrid
+encoder_depth: 4
+temperature: 0.2
+num_layers: 4
+
+# data formats
+channels: 1 # grayscale
+bos_token: 1
+eos_token: 2
+max_height: 192
+max_seq_len: 512
+max_width: 672
+min_height: 32
+min_width: 32
+pad_token: 0
+patch_size: 16
+num_tokens: 8000
+pad: false
+
+# device and batching
+gpu_devices: [0] # for multiple (untested): [0,1,2,3,4,5,6,7]
+batchsize: 32 
+micro_batchsize: 16 # better divide batchsize
+testbatchsize: 16 # for valid dataloader(s), test for test mode
+valbatches: 20 # per data source per epoch
+
+# optimizer, schdeuler
+optimizer: Adam
+betas:
+- 0.9
+- 0.999
+lr: 0.001
+scheduler: StepLR 
+lr_step: 10 
+gamma: 0.8
+
+# schdule
+epochs: 50
+middlestop: 1 #* zero index, stopsright after this epoch, for split/continue training
+
+# data source
+data: [
+  /content/pdf/train.pkl
+]
+valdata: [
+  /content/pdf/val.pkl
+]
+tokenizer: /content/LaTeX-OCR/pix2tex/model/dataset/tokenizer.json
+load_pl_chpt: null #* if provided, ignore load_chkpt, for contine training
+load_chkpt: null
+
+# output
+# everything now inside os.path.join(output_path, name)
+output_path: /content/lightning_logs 
+name: reproducing
+version: version_0 # suggested: null to begin training, and provide corresponding string in contine training
+
+# miscellaneous
+debug: false
+seed: 42
+log_every: 100 # tensorboard frequency
+
+# unused
+model_path: null
+sample_freq: 3000 
+save_freq: 4 
+test_samples: 2 
+id: null # for wandb, not used
+
+
+
+
+
+
+
+
+
