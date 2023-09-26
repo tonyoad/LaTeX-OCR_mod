@@ -31,11 +31,11 @@ num_tokens: 8000
 pad: false
 
 # device and batching
-gpu_devices: [0] # for multiple (untested): [0,1,2,3,4,5,6,7]
+gpu_devices: [0] # not tested on multiple gpus, [0,1,2,3] for example
 batchsize: 32 
 micro_batchsize: 16 # better divide batchsize
 testbatchsize: 16 # for valid dataloader(s), test for test mode
-valbatches: 20 # per data source per epoch
+valbatches: 20 # per data source per validation loop
 
 # optimizer, schdeuler
 optimizer: Adam
@@ -49,7 +49,7 @@ gamma: 0.8
 
 # schdule
 epochs: 50
-middlestop: 1 #* zero index, stopsright after this epoch, for split/continue training
+middlestop: 1 #* zero index, stops right after this epoch, for split/continue training
 
 # data source
 data: [
@@ -66,18 +66,18 @@ load_chkpt: null
 # everything now inside os.path.join(output_path, name)
 output_path: /content/lightning_logs 
 name: reproducing
-version: version_0 # suggested: null to begin training, and provide corresponding string in contine training
+version: null # suggested: null to begin training, and provide corresponding string in contine training
+save_freq: 1 
 
 # miscellaneous
 debug: false
 seed: 42
 log_every: 100 # tensorboard frequency
+sample_freq: 3000 # validation loop occurs every n steps, not epoch based
 
 # unused
-model_path: null
-sample_freq: 3000 
-save_freq: 4 
-test_samples: 2 
+model_path: null # not used at all
+test_samples: 2 # no testing here
 id: null # for wandb, not used
 
 

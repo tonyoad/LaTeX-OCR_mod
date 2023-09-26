@@ -60,7 +60,7 @@ class LatexOCRPL(pl.LightningModule):
         print()
         print("fit start from epoch", self.current_epoch)
         print("stop right after epoch", self.args.middlestop)
-        assert self.args.middlestop < 0 or self.current_epoch < self.args.middlestop
+        assert self.args.middlestop < 0 or self.current_epoch <= self.args.middlestop
 
     def on_train_end(self):
         return
@@ -87,6 +87,12 @@ class LatexOCRPL(pl.LightningModule):
 
             self.log(f"train_loss_{dl_idx}", total_loss, on_epoch=True)
             total_losses.append(total_loss)
+
+            # if ((self.global_step) % self.args.sample_freq == 0 and self.global_step > 0):
+            #     print(f"validation at step {self.global_step}")
+            #     # self.trainer.validate(model=self, dataloaders=self.trainer.val_dataloaders)
+            #     self.trainer._run_evaluate()
+
         self.log(f"train_loss_avg", sum(total_losses) /
                  len(total_losses), on_epoch=True)
 
@@ -115,7 +121,7 @@ class LatexOCRPL(pl.LightningModule):
             if len(ts) > 0:
                 self.edit_dists[dataloader_idx].append(
                     distance(post_process(predi), ts)/len(ts))
-                    
+
         tgt_seq = seq['input_ids'][:, 1:]
         shape_diff = dec.shape[1]-tgt_seq.shape[1]
         if shape_diff < 0:
@@ -158,14 +164,15 @@ class MiddleStop(Callback):
         self.verbose = False
 
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-        return
+        self._run_early_stopping_check(trainer, pl_module)
 
     def on_validation_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-        self._run_early_stopping_check(trainer, pl_module)
+        return
 
     def _run_early_stopping_check(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         """Checks whether the early stopping condition is met and if so tells the trainer to stop the training."""
-        should_stop = (self.stop_at >= 0 and pl_module.current_epoch >= self.stop_at)
+        should_stop = (
+            self.stop_at >= 0 and pl_module.current_epoch >= self.stop_at)
         trainer.should_stop = trainer.should_stop or should_stop
         if should_stop:
             self.stopped_epoch = trainer.current_epoch
@@ -198,7 +205,7 @@ class SaveLast(Callback):
 #         return len(self.ds)
 
 
-def get_pl_trainer(device, name, epochs, val_batches, middlestop_ep, out_path=None):
+def get_pl_trainer(device, name, epochs, val_batches, middlestop_ep, val_every_n_steps, save_freq, out_path=None):
     # set up device in pt-lightning
     from functools import partial
     if device.find("cuda:") != -1:
@@ -218,10 +225,12 @@ def get_pl_trainer(device, name, epochs, val_batches, middlestop_ep, out_path=No
 
     return _get_fn(limit_train_batches=None, max_epochs=epochs,
                    logger=logger, log_every_n_steps=log_freq,
-                   check_val_every_n_epoch=1,
+                   check_val_every_n_epoch=None,
+                   val_check_interval=val_every_n_steps,
                    callbacks=[MiddleStop(middlestop_ep),
                               ModelCheckpoint(
-                                  dirpath=None, save_top_k=-1, monitor="train_loss_avg"),
+                                  dirpath=None, save_top_k=-1, monitor="train_loss_avg", every_n_epochs=save_freq, save_on_train_epoch_end=True
+                              ),
                               TQDMProgressBar(),
                               SaveLast()
                               ],
@@ -239,7 +248,7 @@ def train(args):
     for i in range(1, len(dl_trains)):
         dl_train_combined.combine(dl_trains[i])
     dl_train_combined.update(**args, test=False)
-    dl_train_combined._get_ext_size()
+    # dl_train_combined._get_ext_size()
 
     valdataloaders = [Im2LatexDataset().load(x) for x in args.valdata]
     valargs = args.copy()
@@ -247,7 +256,7 @@ def train(args):
                    keep_smaller_batches=True, test=True)
     for v in valdataloaders:
         v.update(**valargs)
-        v._get_ext_size()
+        # v._get_ext_size()
     # valdataloaders = [torch.utils.data.DataLoader(IterDatasetWrapper(v), batch_size=1,
         # sampler = torch.utils.data.sampler.SequentialSampler(IterDatasetWrapper(v))) for v in valdataloaders]
 
@@ -283,7 +292,9 @@ def train(args):
                                 name=args.name, epochs=args.epochs,
                                 val_batches=args.valbatches,  # now a fixed number
                                 middlestop_ep=args.middlestop,
-                                out_path=out_path
+                                out_path=out_path,
+                                val_every_n_steps=args.sample_freq,
+                                save_freq = args.save_freq
                                 )
 
     pl_trainer.fit(model=pl_model, train_dataloaders=[dl_train_combined],

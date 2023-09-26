@@ -18,6 +18,7 @@ from pix2tex.dataset.transforms import train_transform, test_transform
 
 # https://github.com/Lightning-AI/lightning/issues/2675
 
+
 class Im2LatexDataset:
     keep_smaller_batches = False
     shuffle = True
@@ -33,6 +34,7 @@ class Im2LatexDataset:
     eos_token_id = 2
     transform = train_transform
     data = defaultdict(lambda: [])
+    ext_size = -1
 
     def __init__(self, equations=None, images=None, tokenizer=None, shuffle=True, batchsize=16, max_seq_len=1024,
                  max_dimensions=(1024, 512), min_dimensions=(32, 32), pad=False, keep_smaller_batches=False, test=False):
@@ -80,7 +82,6 @@ class Im2LatexDataset:
                 pass
             self.data = dict(self.data)
             self._get_size()
-            self.ext_size = -1
 
             iter(self)
 
